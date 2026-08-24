@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "actionsLogicAppName": {
+      "value": "la-adaquest-l1-soc-triage-actions"
+    },
+    "launcherLogicAppName": {
+      "value": "la-adaquest-l1-soc-triage-launcher"
+    },
+    "actionsLocation": {
+      "value": "eastus2"
+    },
+    "launcherLocation": {
+      "value": "eastus"
+    },
+    "sentinelSubscriptionId": {
+      "value": "<CUSTOMER-SUBSCRIPTION-ID>"
+    },
+    "sentinelResourceGroupName": {
+      "value": "<SENTINEL-RESOURCE-GROUP>"
+    },
+    "sentinelWorkspaceName": {
+      "value": "<SENTINEL-WORKSPACE-NAME>"
+    },
+    "securityCopilotAgentId": {
+      "value": "<INSTALLED-SECURITY-COPILOT-AGENT-ID>"
+    },
+    "securityCopilotAgentTrigger": {
+      "value": "Default"
+    },
+    "escalationAssigneeUPN": {
+      "value": "<ESCALATION-OWNER-UPN>"
+    },
+    "synchronizationDelayMinutes": {
+      "value": 2
+    },
+    "automationRuleDisplayName": {
+      "value": "[AQ-Autonomous] L1 SOC Triage Agent"
+    },
+    "automationRuleEnabled": {
+      "value": true
+    },
+    "automationRuleOrder": {
+      "value": 1
+    },
+    "sentinelAutomationServicePrincipalObjectId": {
+      "value": "<MICROSOFT-SENTINEL-AUTOMATION-OBJECT-ID-OR-EMPTY>"
+    }
+  }
+}
