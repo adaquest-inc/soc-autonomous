@@ -26,11 +26,9 @@ It does **not** modify the existing Logic Apps used in the adaQuest development 
 
 - `azuredeploy.json`: combined ARM template.
 - `azuredeploy.parameters.example.json`: customer-specific parameter example.
-- `Deploy-L1SocTriage.ps1`: Azure CLI deployment helper.
+- `scripts/Deploy-L1SocTriage.ps1`: optional Azure CLI deployment helper in the GitHub repository.
 
 ## Before selecting Deploy to Azure
-
-Collect these values before deployment:
 
 Have the following customer values available:
 
@@ -65,7 +63,7 @@ The template source used by the button is the public root-level
 3. Run:
 
 ```powershell
-.\Deploy-L1SocTriage.ps1 `
+.\scripts\Deploy-L1SocTriage.ps1 `
   -SubscriptionId '<TARGET-SUBSCRIPTION-ID>' `
   -ResourceGroupName '<TARGET-RESOURCE-GROUP>' `
   -ParametersFile '.\azuredeploy.parameters.json'
