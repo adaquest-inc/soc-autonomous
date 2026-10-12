@@ -11,6 +11,12 @@
     "actionsLocation": {
       "value": "eastus2"
     },
+    "actionsMonitorConnectionName": {
+      "value": "<EXISTING-AZURE-MONITOR-LOGS-CONNECTION-NAME>"
+    },
+    "actionsSentinelConnectionName": {
+      "value": "<EXISTING-MICROSOFT-SENTINEL-CONNECTION-NAME>"
+    },
     "sentinelSubscriptionId": {
       "value": "<CUSTOMER-SUBSCRIPTION-ID>"
     },
