@@ -2,7 +2,7 @@
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fadaquest-inc%2Fsoc-autonomous%2Fmain%2Fazuredeploy.teams-upgrade.json)
 
-Version: **0.4.0**
+Version: **0.4.1**
 
 Use this incremental template only when the L1 SOC Triage launcher, actions
 workflow, connections, and Sentinel Automation Rule are already deployed from
@@ -63,7 +63,7 @@ Example direct invocation:
 
 If the actions Logic App was manually changed after the v0.3.1 deployment,
 compare/export those changes first. This upgrade intentionally replaces the
-actions workflow definition with the v0.4.0 definition.
+actions workflow definition with the v0.4.1 definition.
 
 ## Deployment
 
