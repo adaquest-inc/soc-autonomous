@@ -2,7 +2,7 @@
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fadaquest-inc%2Fsoc-autonomous%2Fmain%2Fazuredeploy.teams-upgrade.json)
 
-Version: **0.4.3**
+Version: **0.4.4**
 
 Use this incremental template only when the L1 SOC Triage launcher, actions
 workflow, connections, and Sentinel Automation Rule are already deployed from
@@ -11,19 +11,20 @@ the adaQuest package.
 ## What the upgrade changes
 
 - Creates `la-adaquest-l1-soc-triage-notifications`.
-- Creates one Microsoft Teams API connection.
+- Creates the standardized Azure Monitor Logs, Microsoft Sentinel, and
+  Microsoft Teams API connections required by the actions and notifications
+  workflows.
 - Updates the existing actions Logic App to call the notifications workflow
   after a confirmed automatic close or verified L2/L3 escalation.
 - Adds four deployment parameters for the two Teams destinations.
-- Requires the exact names of the existing Azure Monitor Logs and Microsoft
-  Sentinel API connections used by the actions Logic App.
 
 ## What the upgrade preserves
 
 - The Security Copilot agent manifest and installed agent.
 - The launcher Logic App.
 - The Security Copilot connection.
-- Existing Microsoft Sentinel and Azure Monitor Logs connections.
+- Any pre-existing Microsoft Sentinel and Azure Monitor Logs connections with
+  names outside the adaQuest naming standard.
 - The Microsoft Sentinel Automation Rule.
 - The current actions HTTP trigger name, `ReceiveL1TriageResult`.
 - The existing owner-preservation behavior.
@@ -33,15 +34,11 @@ the adaQuest package.
 1. Export the current actions Logic App as a backup.
 2. Confirm that its resource name follows the deployed package, normally
    `la-adaquest-l1-soc-triage-actions`.
-3. Record the exact resource names of the Azure Monitor Logs and Microsoft
-   Sentinel API connections used by the actions Logic App. Do not infer the
-   names from the Logic App name because manually deployed environments can
-   use different names.
-4. Record the current escalation UPN, Sentinel subscription, resource group,
+3. Record the current escalation UPN, Sentinel subscription, resource group,
    workspace, and actions region.
-5. Obtain the Team ID and Channel ID for the closed-incidents destination.
-6. Obtain the Team ID and Channel ID for the L2/L3 escalation destination.
-7. Ensure the Microsoft 365 account that will authorize the Teams connection
+4. Obtain the Team ID and Channel ID for the closed-incidents destination.
+5. Obtain the Team ID and Channel ID for the L2/L3 escalation destination.
+6. Ensure the Microsoft 365 account that will authorize the Teams connection
    can post in both channels.
 
 ### Extract Team and Channel IDs
@@ -65,33 +62,9 @@ Example direct invocation:
 .\scripts\Get-TeamsChannelIds.ps1 -ChannelLink '<COPIED-TEAMS-CHANNEL-LINK>'
 ```
 
-### Find the existing API connection names
-
-In the Azure portal, open the existing actions Logic App and select
-**Development Tools > API connections**. Record the resource name associated
-with **Azure Monitor Logs** and the resource name associated with
-**Microsoft Sentinel**.
-
-Alternatively, use Azure PowerShell:
-
-```powershell
-$logicApp = Get-AzResource `
-  -ResourceGroupName '<RESOURCE-GROUP>' `
-  -ResourceType 'Microsoft.Logic/workflows' `
-  -Name 'la-adaquest-l1-soc-triage-actions' `
-  -ExpandProperties
-
-$connections = $logicApp.Properties.parameters.'$connections'.value
-
-[pscustomobject]@{
-  ActionsMonitorConnectionName  = $connections.azuremonitorlogs.connectionName
-  ActionsSentinelConnectionName = $connections.azuresentinel.connectionName
-}
-```
-
 If the actions Logic App was manually changed after the v0.3.1 deployment,
 compare/export those changes first. This upgrade intentionally replaces the
-actions workflow definition with the v0.4.3 definition.
+actions workflow definition with the v0.4.4 definition.
 
 ## Deployment
 
@@ -100,11 +73,9 @@ actions workflow definition with the v0.4.3 definition.
    actions Logic App.
 3. Keep `actionsLogicAppName`, `actionsLocation`, Sentinel values, and
    `escalationAssigneeUPN` identical to the current deployment.
-4. Enter the exact existing API connection resource names in
-   `actionsMonitorConnectionName` and `actionsSentinelConnectionName`.
-5. Enter the new notifications Logic App name and both Team/Channel pairs.
-6. Deploy in **Incremental** mode. Never use Complete mode for this upgrade.
-7. Wait for the ARM deployment to finish.
+4. Enter the new notifications Logic App name and both Team/Channel pairs.
+5. Deploy in **Incremental** mode. Never use Complete mode for this upgrade.
+6. Wait for the ARM deployment to finish.
 
 ## Required authorization
 
