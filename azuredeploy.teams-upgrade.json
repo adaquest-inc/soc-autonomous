@@ -4,7 +4,7 @@
   "metadata": {
     "title": "adaQuest L1 SOC Triage - Microsoft Teams notification upgrade",
     "description": "Adds Microsoft Teams notifications to an existing adaQuest L1 SOC Triage deployment without redeploying the launcher or Sentinel automation rule.",
-    "version": "0.4.1"
+    "version": "0.4.2"
   },
   "parameters": {
     "actionsLogicAppName": {
@@ -98,7 +98,7 @@
       "defaultValue": {
         "solution": "adaQuest L1 SOC Triage",
         "component": "Security Copilot Agent",
-        "deploymentVersion": "0.4.1"
+        "deploymentVersion": "0.4.2"
       }
     }
   },
@@ -141,9 +141,6 @@
               "type": "Object"
             },
             "EscalationAssigneeUPN": {
-              "type": "String"
-            },
-            "NotificationWorkflowResourceId": {
               "type": "String"
             },
             "SentinelSubscriptionId": {
@@ -402,7 +399,7 @@
                             "host": {
                               "triggerName": "ReceiveIncidentNotification",
                               "workflow": {
-                                "id": "@parameters('NotificationWorkflowResourceId')"
+                                "id": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
                               }
                             },
                             "body": {
@@ -540,7 +537,7 @@
                                       "host": {
                                         "triggerName": "ReceiveIncidentNotification",
                                         "workflow": {
-                                          "id": "@parameters('NotificationWorkflowResourceId')"
+                                          "id": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
                                         }
                                       },
                                       "body": {
@@ -933,9 +930,6 @@
           },
           "EscalationAssigneeUPN": {
             "value": "[parameters('escalationAssigneeUPN')]"
-          },
-          "NotificationWorkflowResourceId": {
-            "value": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
           }
         }
       },
@@ -1203,70 +1197,6 @@
       "dependsOn": [
         "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]"
       ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "deployTeamsConnectionAccessPolicy",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]",
-        "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
-      ],
-      "properties": {
-        "mode": "Incremental",
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "parameters": {
-          "connectionName": {
-            "value": "[variables('teamsConnectionName')]"
-          },
-          "connectionLocation": {
-            "value": "[parameters('actionsLocation')]"
-          },
-          "principalId": {
-            "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName')), '2019-05-01', 'Full').identity.principalId]"
-          },
-          "tenantId": {
-            "value": "[subscription().tenantId]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "parameters": {
-            "connectionName": {
-              "type": "string"
-            },
-            "connectionLocation": {
-              "type": "string"
-            },
-            "principalId": {
-              "type": "string"
-            },
-            "tenantId": {
-              "type": "string"
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Web/connections/accessPolicies",
-              "apiVersion": "2016-06-01",
-              "name": "[concat(parameters('connectionName'), '/', parameters('principalId'))]",
-              "location": "[parameters('connectionLocation')]",
-              "properties": {
-                "principal": {
-                  "type": "ActiveDirectory",
-                  "identity": {
-                    "objectId": "[parameters('principalId')]",
-                    "tenantId": "[parameters('tenantId')]"
-                  }
-                }
-              }
-            }
-          ]
-        }
-      }
     }
   ],
   "outputs": {
