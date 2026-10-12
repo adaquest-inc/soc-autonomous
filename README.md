@@ -2,7 +2,7 @@
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fadaquest-inc%2Fsoc-autonomous%2Fmain%2Fazuredeploy.json)
 
-Version: **0.4.1 (Teams notifications)**
+Version: **0.4.2 (Teams notifications)**
 
 This public deployment package installs the Azure automation layer used by the
 adaQuest L1 SOC Triage Security Copilot agent. Select **Deploy to Azure**, sign
