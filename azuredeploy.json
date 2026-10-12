@@ -4,7 +4,7 @@
   "metadata": {
     "title": "adaQuest L1 SOC Triage - MVP deployment",
     "description": "Deploys the automatic launcher, Sentinel incident actions, and Microsoft Teams notification Logic Apps.",
-    "version": "0.4.2"
+    "version": "0.4.3"
   },
   "parameters": {
     "actionsLogicAppName": {
@@ -170,7 +170,7 @@
       "defaultValue": {
         "solution": "adaQuest L1 SOC Triage",
         "component": "Security Copilot Agent",
-        "deploymentVersion": "0.4.2"
+        "deploymentVersion": "0.4.3"
       }
     }
   },
