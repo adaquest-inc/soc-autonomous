@@ -40,6 +40,27 @@ the adaQuest package.
 7. Ensure the Microsoft 365 account that will authorize the Teams connection
    can post in both channels.
 
+### Extract Team and Channel IDs
+
+For each destination, use Microsoft Teams desktop or web:
+
+1. Open the channel menu (`...`).
+2. Select **Copy link** or **Get link to channel**.
+3. Run the helper and paste the complete copied link:
+
+```powershell
+.\scripts\Get-TeamsChannelIds.ps1
+```
+
+The helper accepts a raw Teams URL and the Markdown form `[URL](URL)`. It also
+decodes values such as `%3A` to `:` and `%40` to `@`.
+
+Example direct invocation:
+
+```powershell
+.\scripts\Get-TeamsChannelIds.ps1 -ChannelLink '<COPIED-TEAMS-CHANNEL-LINK>'
+```
+
 If the actions Logic App was manually changed after the v0.3.1 deployment,
 compare/export those changes first. This upgrade intentionally replaces the
 actions workflow definition with the v0.4.0 definition.
