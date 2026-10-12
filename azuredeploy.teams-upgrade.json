@@ -4,7 +4,7 @@
   "metadata": {
     "title": "adaQuest L1 SOC Triage - Microsoft Teams notification upgrade",
     "description": "Adds Microsoft Teams notifications to an existing adaQuest L1 SOC Triage deployment without redeploying the launcher or Sentinel automation rule.",
-    "version": "0.4.2"
+    "version": "0.4.3"
   },
   "parameters": {
     "actionsLogicAppName": {
@@ -31,6 +31,20 @@
         "description": "Azure region for the actions Logic App and its API connections."
       },
       "defaultValue": "eastus2"
+    },
+    "actionsMonitorConnectionName": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing Azure Monitor Logs API connection name used by the actions Logic App. Enter the resource name exactly as shown under API connections."
+      },
+      "minLength": 1
+    },
+    "actionsSentinelConnectionName": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing Microsoft Sentinel API connection name used by the actions Logic App. Enter the resource name exactly as shown under API connections."
+      },
+      "minLength": 1
     },
     "sentinelSubscriptionId": {
       "type": "string",
@@ -98,13 +112,11 @@
       "defaultValue": {
         "solution": "adaQuest L1 SOC Triage",
         "component": "Security Copilot Agent",
-        "deploymentVersion": "0.4.2"
+        "deploymentVersion": "0.4.3"
       }
     }
   },
   "variables": {
-    "actionsMonitorConnectionName": "[concat('conn-', parameters('actionsLogicAppName'), '-logs')]",
-    "actionsSentinelConnectionName": "[concat('conn-', parameters('actionsLogicAppName'), '-sentinel')]",
     "teamsConnectionName": "[concat('conn-', parameters('notificationsLogicAppName'), '-teams')]"
   },
   "resources": [
@@ -899,8 +911,8 @@
             "value": {
               "azuremonitorlogs": {
                 "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('actionsLocation'), 'azuremonitorlogs')]",
-                "connectionId": "[resourceId('Microsoft.Web/connections', variables('actionsMonitorConnectionName'))]",
-                "connectionName": "[variables('actionsMonitorConnectionName')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('actionsMonitorConnectionName'))]",
+                "connectionName": "[parameters('actionsMonitorConnectionName')]",
                 "connectionProperties": {
                   "authentication": {
                     "type": "ManagedServiceIdentity"
@@ -909,8 +921,8 @@
               },
               "azuresentinel": {
                 "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('actionsLocation'), 'azuresentinel')]",
-                "connectionId": "[resourceId('Microsoft.Web/connections', variables('actionsSentinelConnectionName'))]",
-                "connectionName": "[variables('actionsSentinelConnectionName')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('actionsSentinelConnectionName'))]",
+                "connectionName": "[parameters('actionsSentinelConnectionName')]",
                 "connectionProperties": {
                   "authentication": {
                     "type": "ManagedServiceIdentity"
