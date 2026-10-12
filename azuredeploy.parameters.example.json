@@ -8,6 +8,9 @@
     "launcherLogicAppName": {
       "value": "la-adaquest-l1-soc-triage-launcher"
     },
+    "notificationsLogicAppName": {
+      "value": "la-adaquest-l1-soc-triage-notifications"
+    },
     "actionsLocation": {
       "value": "eastus2"
     },
@@ -24,13 +27,25 @@
       "value": "<SENTINEL-WORKSPACE-NAME>"
     },
     "securityCopilotAgentId": {
-      "value": "<INSTALLED-SECURITY-COPILOT-AGENT-ID>"
+      "value": "<SECURITY-COPILOT-AGENT-EXECUTION-ID>"
     },
     "securityCopilotAgentTrigger": {
       "value": "Default"
     },
     "escalationAssigneeUPN": {
       "value": "<ESCALATION-OWNER-UPN>"
+    },
+    "closedIncidentsTeamId": {
+      "value": "<CLOSED-INCIDENTS-TEAM-ID>"
+    },
+    "closedIncidentsChannelId": {
+      "value": "<CLOSED-INCIDENTS-CHANNEL-ID>"
+    },
+    "escalatedIncidentsTeamId": {
+      "value": "<ESCALATED-INCIDENTS-TEAM-ID>"
+    },
+    "escalatedIncidentsChannelId": {
+      "value": "<ESCALATED-INCIDENTS-CHANNEL-ID>"
     },
     "synchronizationDelayMinutes": {
       "value": 2

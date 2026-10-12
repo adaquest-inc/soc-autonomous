@@ -3,8 +3,8 @@
   "contentVersion": "1.0.0.0",
   "metadata": {
     "title": "adaQuest L1 SOC Triage - MVP deployment",
-    "description": "Deploys the automatic launcher and Sentinel incident actions Logic Apps.",
-    "version": "0.3.1"
+    "description": "Deploys the automatic launcher, Sentinel incident actions, and Microsoft Teams notification Logic Apps.",
+    "version": "0.4.4"
   },
   "parameters": {
     "actionsLogicAppName": {
@@ -22,6 +22,15 @@
         "description": "Name of the Logic App that starts the Security Copilot agent for new incidents."
       },
       "defaultValue": "la-adaquest-l1-soc-triage-launcher",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "notificationsLogicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Logic App that sends closed and escalated incident notifications to Microsoft Teams."
+      },
+      "defaultValue": "la-adaquest-l1-soc-triage-notifications",
       "minLength": 1,
       "maxLength": 80
     },
@@ -64,7 +73,7 @@
     "securityCopilotAgentId": {
       "type": "string",
       "metadata": {
-        "description": "Security Copilot agent ID installed in the customer tenant."
+        "description": "Security Copilot Agent Execution ID (GUID) used by the launcher to execute the installed agent. This is not the Microsoft Entra Agent ID/Blueprint identity."
       },
       "minLength": 36,
       "maxLength": 36
@@ -84,6 +93,34 @@
       },
       "defaultValue": "",
       "maxLength": 320
+    },
+    "closedIncidentsTeamId": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Teams Team ID for automatically closed incident notifications."
+      },
+      "minLength": 1
+    },
+    "closedIncidentsChannelId": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Teams Channel ID for automatically closed incident notifications."
+      },
+      "minLength": 1
+    },
+    "escalatedIncidentsTeamId": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Teams Team ID for L2/L3 escalation notifications."
+      },
+      "minLength": 1
+    },
+    "escalatedIncidentsChannelId": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Teams Channel ID for L2/L3 escalation notifications."
+      },
+      "minLength": 1
     },
     "synchronizationDelayMinutes": {
       "type": "int",
@@ -133,7 +170,7 @@
       "defaultValue": {
         "solution": "adaQuest L1 SOC Triage",
         "component": "Security Copilot Agent",
-        "deploymentVersion": "0.3.1"
+        "deploymentVersion": "0.4.4"
       }
     }
   },
@@ -141,7 +178,8 @@
     "actionsMonitorConnectionName": "[concat('conn-', parameters('actionsLogicAppName'), '-logs')]",
     "actionsSentinelConnectionName": "[concat('conn-', parameters('actionsLogicAppName'), '-sentinel')]",
     "launcherSentinelConnectionName": "[concat('conn-', parameters('launcherLogicAppName'), '-sentinel')]",
-    "securityCopilotConnectionName": "[concat('conn-', parameters('launcherLogicAppName'), '-securitycopilot')]"
+    "securityCopilotConnectionName": "[concat('conn-', parameters('launcherLogicAppName'), '-securitycopilot')]",
+    "teamsConnectionName": "[concat('conn-', parameters('notificationsLogicAppName'), '-teams')]"
   },
   "resources": [
     {
@@ -219,6 +257,20 @@
         },
         "connectionState": "Enabled",
         "displayName": "[variables('securityCopilotConnectionName')]"
+      }
+    },
+    {
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "2016-06-01",
+      "name": "[variables('teamsConnectionName')]",
+      "location": "[parameters('actionsLocation')]",
+      "kind": "V1",
+      "properties": {
+        "api": {
+          "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('actionsLocation'), 'teams')]"
+        },
+        "connectionState": "Enabled",
+        "displayName": "[variables('teamsConnectionName')]"
       }
     },
     {
@@ -486,6 +538,47 @@
                             },
                             "path": "/Incidents"
                           }
+                        },
+                        "NotifyClosedIncident": {
+                          "runAfter": {
+                            "CloseSafeIncident": [
+                              "Succeeded"
+                            ]
+                          },
+                          "type": "Workflow",
+                          "inputs": {
+                            "host": {
+                              "triggerName": "ReceiveIncidentNotification",
+                              "workflow": {
+                                "id": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
+                              }
+                            },
+                            "body": {
+                              "NotificationType": "AutoClosed",
+                              "IncidentId": "@{triggerBody()?['IncidentId']}",
+                              "IncidentNumber": "@{string(first(body('FindSentinelIncident')?['value'])?['IncidentNumber'])}",
+                              "Title": "@{coalesce(outputs('IncidentRecord')?['title'], first(body('FindSentinelIncident')?['value'])?['Title'], '')}",
+                              "Severity": "@{coalesce(outputs('IncidentRecord')?['severity'], first(body('FindSentinelIncident')?['value'])?['Severity'], '')}",
+                              "Verdict": "@{triggerBody()?['Verdict']}",
+                              "Confidence": "@{triggerBody()?['Confidence']}",
+                              "RecommendedAction": "@{triggerBody()?['RecommendedAction']}",
+                              "DecisionReasoning": "@{triggerBody()?['DecisionReasoning']}",
+                              "Owner": "@{coalesce(outputs('IncidentRecord')?['owner']?['assignedTo'], outputs('IncidentRecord')?['owner']?['userPrincipalName'], outputs('IncidentRecord')?['owner']?['email'], '')}",
+                              "IncidentUrl": "@{concat('https://security.microsoft.com/incidents/', triggerBody()?['IncidentId'])}",
+                              "ProcessedAtUtc": "@{utcNow()}"
+                            }
+                          }
+                        },
+                        "ClosedNotificationHandled": {
+                          "runAfter": {
+                            "NotifyClosedIncident": [
+                              "Succeeded",
+                              "Failed",
+                              "TimedOut"
+                            ]
+                          },
+                          "type": "Compose",
+                          "inputs": "@if(equals(actions('NotifyClosedIncident')?['status'], 'Succeeded'), 'SUCCESS_TEAMS_CLOSED_NOTIFICATION_SENT', concat('WARNING_TEAMS_CLOSED_NOTIFICATION_', toUpper(string(actions('NotifyClosedIncident')?['status']))))"
                         }
                       },
                       "runAfter": {
@@ -583,6 +676,47 @@
                                   "EscalationSuccessResult": {
                                     "type": "Compose",
                                     "inputs": "@if(\n  outputs('OwnerMustBePreserved'),\n  'SUCCESS_ESCALATED_EXISTING_OWNER_PRESERVED',\n  if(\n    empty(outputs('NormalizedEscalationAssigneeUPN')),\n    'SUCCESS_ESCALATED_NO_ASSIGNMENT_CHANGE',\n    'SUCCESS_ESCALATED_ASSIGNED'\n  )\n)"
+                                  },
+                                  "NotifyEscalatedIncident": {
+                                    "runAfter": {
+                                      "EscalationSuccessResult": [
+                                        "Succeeded"
+                                      ]
+                                    },
+                                    "type": "Workflow",
+                                    "inputs": {
+                                      "host": {
+                                        "triggerName": "ReceiveIncidentNotification",
+                                        "workflow": {
+                                          "id": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
+                                        }
+                                      },
+                                      "body": {
+                                        "NotificationType": "Escalated",
+                                        "IncidentId": "@{triggerBody()?['IncidentId']}",
+                                        "IncidentNumber": "@{string(first(body('FindSentinelIncident')?['value'])?['IncidentNumber'])}",
+                                        "Title": "@{coalesce(outputs('EscalatedIncidentRecord')?['title'], first(body('FindSentinelIncident')?['value'])?['Title'], '')}",
+                                        "Severity": "@{coalesce(outputs('EscalatedIncidentRecord')?['severity'], first(body('FindSentinelIncident')?['value'])?['Severity'], '')}",
+                                        "Verdict": "@{triggerBody()?['Verdict']}",
+                                        "Confidence": "@{triggerBody()?['Confidence']}",
+                                        "RecommendedAction": "@{triggerBody()?['RecommendedAction']}",
+                                        "DecisionReasoning": "@{triggerBody()?['DecisionReasoning']}",
+                                        "Owner": "@{coalesce(outputs('EscalatedIncidentRecord')?['owner']?['assignedTo'], outputs('EscalatedIncidentRecord')?['owner']?['userPrincipalName'], outputs('EscalatedIncidentRecord')?['owner']?['email'], '')}",
+                                        "IncidentUrl": "@{concat('https://security.microsoft.com/incidents/', triggerBody()?['IncidentId'])}",
+                                        "ProcessedAtUtc": "@{utcNow()}"
+                                      }
+                                    }
+                                  },
+                                  "EscalatedNotificationHandled": {
+                                    "runAfter": {
+                                      "NotifyEscalatedIncident": [
+                                        "Succeeded",
+                                        "Failed",
+                                        "TimedOut"
+                                      ]
+                                    },
+                                    "type": "Compose",
+                                    "inputs": "@if(equals(actions('NotifyEscalatedIncident')?['status'], 'Succeeded'), 'SUCCESS_TEAMS_ESCALATION_NOTIFICATION_SENT', concat('WARNING_TEAMS_ESCALATION_NOTIFICATION_', toUpper(string(actions('NotifyEscalatedIncident')?['status']))))"
                                   }
                                 },
                                 "runAfter": {
@@ -953,7 +1087,268 @@
       "tags": "[parameters('tags')]",
       "dependsOn": [
         "[resourceId('Microsoft.Web/connections', variables('actionsMonitorConnectionName'))]",
-        "[resourceId('Microsoft.Web/connections', variables('actionsSentinelConnectionName'))]"
+        "[resourceId('Microsoft.Web/connections', variables('actionsSentinelConnectionName'))]",
+        "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2017-07-01",
+      "name": "[parameters('notificationsLogicAppName')]",
+      "location": "[parameters('actionsLocation')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            },
+            "ClosedIncidentsTeamId": {
+              "type": "String"
+            },
+            "ClosedIncidentsChannelId": {
+              "type": "String"
+            },
+            "EscalatedIncidentsTeamId": {
+              "type": "String"
+            },
+            "EscalatedIncidentsChannelId": {
+              "type": "String"
+            }
+          },
+          "triggers": {
+            "ReceiveIncidentNotification": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "NotificationType": {
+                      "type": "string",
+                      "enum": [
+                        "AutoClosed",
+                        "Escalated"
+                      ]
+                    },
+                    "IncidentId": {
+                      "type": "string"
+                    },
+                    "IncidentNumber": {
+                      "type": "string"
+                    },
+                    "Title": {
+                      "type": "string"
+                    },
+                    "Severity": {
+                      "type": "string"
+                    },
+                    "Verdict": {
+                      "type": "string"
+                    },
+                    "Confidence": {
+                      "type": "string"
+                    },
+                    "RecommendedAction": {
+                      "type": "string"
+                    },
+                    "DecisionReasoning": {
+                      "type": "string"
+                    },
+                    "Owner": {
+                      "type": "string"
+                    },
+                    "IncidentUrl": {
+                      "type": "string"
+                    },
+                    "ProcessedAtUtc": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "NotificationType",
+                    "IncidentId",
+                    "IncidentNumber",
+                    "Title",
+                    "Severity",
+                    "Verdict",
+                    "Confidence",
+                    "RecommendedAction",
+                    "DecisionReasoning",
+                    "IncidentUrl",
+                    "ProcessedAtUtc"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "actions": {
+            "SanitizedTitle": {
+              "runAfter": {},
+              "type": "Compose",
+              "inputs": "@replace(replace(replace(string(triggerBody()?['Title']), '&', '&amp;'), '<', '&lt;'), '>', '&gt;')"
+            },
+            "SanitizedDecisionReasoning": {
+              "runAfter": {
+                "SanitizedTitle": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@replace(replace(replace(string(triggerBody()?['DecisionReasoning']), '&', '&amp;'), '<', '&lt;'), '>', '&gt;')"
+            },
+            "SanitizedOwner": {
+              "runAfter": {
+                "SanitizedDecisionReasoning": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@replace(replace(replace(string(triggerBody()?['Owner']), '&', '&amp;'), '<', '&lt;'), '>', '&gt;')"
+            },
+            "IsAutoClosedNotification": {
+              "runAfter": {
+                "SanitizedOwner": [
+                  "Succeeded"
+                ]
+              },
+              "actions": {
+                "PostAutoClosedIncidentToTeams": {
+                  "type": "ApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connection": {
+                        "name": "@parameters('$connections')['teams']['connectionId']"
+                      }
+                    },
+                    "method": "post",
+                    "body": {
+                      "recipient": {
+                        "groupId": "@parameters('ClosedIncidentsTeamId')",
+                        "channelId": "@parameters('ClosedIncidentsChannelId')"
+                      },
+                      "messageBody": "@concat('<p><strong>✅ Incident automatically closed by adaQuest L1 SOC Triage</strong></p><p><strong>Incident:</strong> #', triggerBody()?['IncidentNumber'], ' — ', outputs('SanitizedTitle'), '<br><strong>Severity:</strong> ', triggerBody()?['Severity'], '<br><strong>Verdict:</strong> ', triggerBody()?['Verdict'], '<br><strong>Confidence:</strong> ', triggerBody()?['Confidence'], '<br><strong>Decision:</strong> ', outputs('SanitizedDecisionReasoning'), '<br><strong>Processed at:</strong> ', triggerBody()?['ProcessedAtUtc'], ' UTC</p><p><a href=&quot;', triggerBody()?['IncidentUrl'], '&quot;>Open incident in Microsoft Defender XDR</a></p>')"
+                    },
+                    "path": "/beta/teams/conversation/message/poster/@{encodeURIComponent('Flow bot')}/location/@{encodeURIComponent('Channel')}",
+                    "retryPolicy": {
+                      "type": "exponential",
+                      "count": 3,
+                      "interval": "PT20S",
+                      "minimumInterval": "PT10S",
+                      "maximumInterval": "PT2M"
+                    }
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "IsEscalatedNotification": {
+                    "actions": {
+                      "PostEscalatedIncidentToTeams": {
+                        "type": "ApiConnection",
+                        "inputs": {
+                          "host": {
+                            "connection": {
+                              "name": "@parameters('$connections')['teams']['connectionId']"
+                            }
+                          },
+                          "method": "post",
+                          "body": {
+                            "recipient": {
+                              "groupId": "@parameters('EscalatedIncidentsTeamId')",
+                              "channelId": "@parameters('EscalatedIncidentsChannelId')"
+                            },
+                            "messageBody": "@concat('<p><strong>🚨 Incident escalated to L2/L3 by adaQuest L1 SOC Triage</strong></p><p><strong>Incident:</strong> #', triggerBody()?['IncidentNumber'], ' — ', outputs('SanitizedTitle'), '<br><strong>Severity:</strong> ', triggerBody()?['Severity'], '<br><strong>Verdict:</strong> ', triggerBody()?['Verdict'], '<br><strong>Confidence:</strong> ', triggerBody()?['Confidence'], '<br><strong>Recommended action:</strong> ', triggerBody()?['RecommendedAction'], '<br><strong>Owner:</strong> ', if(empty(outputs('SanitizedOwner')), 'Unassigned', outputs('SanitizedOwner')), '<br><strong>Decision:</strong> ', outputs('SanitizedDecisionReasoning'), '<br><strong>Processed at:</strong> ', triggerBody()?['ProcessedAtUtc'], ' UTC</p><p><a href=&quot;', triggerBody()?['IncidentUrl'], '&quot;>Open incident in Microsoft Defender XDR</a></p>')"
+                          },
+                          "path": "/beta/teams/conversation/message/poster/@{encodeURIComponent('Flow bot')}/location/@{encodeURIComponent('Channel')}",
+                          "retryPolicy": {
+                            "type": "exponential",
+                            "count": 3,
+                            "interval": "PT20S",
+                            "minimumInterval": "PT10S",
+                            "maximumInterval": "PT2M"
+                          }
+                        }
+                      }
+                    },
+                    "else": {
+                      "actions": {
+                        "TerminateUnsupportedNotificationType": {
+                          "type": "Terminate",
+                          "inputs": {
+                            "runStatus": "Failed",
+                            "runError": {
+                              "code": "UNSUPPORTED_NOTIFICATION_TYPE",
+                              "message": "NotificationType must be AutoClosed or Escalated."
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "expression": {
+                      "and": [
+                        {
+                          "equals": [
+                            "@triggerBody()?['NotificationType']",
+                            "Escalated"
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "If"
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@triggerBody()?['NotificationType']",
+                      "AutoClosed"
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "teams": {
+                "id": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('actionsLocation'), 'teams')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]",
+                "connectionName": "[variables('teamsConnectionName')]",
+                "connectionProperties": {}
+              }
+            }
+          },
+          "ClosedIncidentsTeamId": {
+            "value": "[parameters('closedIncidentsTeamId')]"
+          },
+          "ClosedIncidentsChannelId": {
+            "value": "[parameters('closedIncidentsChannelId')]"
+          },
+          "EscalatedIncidentsTeamId": {
+            "value": "[parameters('escalatedIncidentsTeamId')]"
+          },
+          "EscalatedIncidentsChannelId": {
+            "value": "[parameters('escalatedIncidentsChannelId')]"
+          }
+        }
+      },
+      "tags": "[parameters('tags')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]"
       ]
     },
     {
@@ -1115,82 +1510,6 @@
       ]
     },
     {
-      "type": "Microsoft.Web/connections/accessPolicies",
-      "apiVersion": "2016-06-01",
-      "name": "[concat(variables('actionsMonitorConnectionName'), '/', reference(resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName')), '2019-05-01', 'Full').identity.principalId)]",
-      "location": "[parameters('actionsLocation')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/connections', variables('actionsMonitorConnectionName'))]",
-        "[resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName'))]"
-      ],
-      "properties": {
-        "principal": {
-          "type": "ActiveDirectory",
-          "identity": {
-            "objectId": "[reference(resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName')), '2019-05-01', 'Full').identity.principalId]",
-            "tenantId": "[subscription().tenantId]"
-          }
-        }
-      }
-    },
-    {
-      "type": "Microsoft.Web/connections/accessPolicies",
-      "apiVersion": "2016-06-01",
-      "name": "[concat(variables('actionsSentinelConnectionName'), '/', reference(resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName')), '2019-05-01', 'Full').identity.principalId)]",
-      "location": "[parameters('actionsLocation')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/connections', variables('actionsSentinelConnectionName'))]",
-        "[resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName'))]"
-      ],
-      "properties": {
-        "principal": {
-          "type": "ActiveDirectory",
-          "identity": {
-            "objectId": "[reference(resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName')), '2019-05-01', 'Full').identity.principalId]",
-            "tenantId": "[subscription().tenantId]"
-          }
-        }
-      }
-    },
-    {
-      "type": "Microsoft.Web/connections/accessPolicies",
-      "apiVersion": "2016-06-01",
-      "name": "[concat(variables('launcherSentinelConnectionName'), '/', reference(resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName')), '2019-05-01', 'Full').identity.principalId)]",
-      "location": "[parameters('launcherLocation')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/connections', variables('launcherSentinelConnectionName'))]",
-        "[resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName'))]"
-      ],
-      "properties": {
-        "principal": {
-          "type": "ActiveDirectory",
-          "identity": {
-            "objectId": "[reference(resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName')), '2019-05-01', 'Full').identity.principalId]",
-            "tenantId": "[subscription().tenantId]"
-          }
-        }
-      }
-    },
-    {
-      "type": "Microsoft.Web/connections/accessPolicies",
-      "apiVersion": "2016-06-01",
-      "name": "[concat(variables('securityCopilotConnectionName'), '/', reference(resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName')), '2019-05-01', 'Full').identity.principalId)]",
-      "location": "[parameters('launcherLocation')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/connections', variables('securityCopilotConnectionName'))]",
-        "[resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName'))]"
-      ],
-      "properties": {
-        "principal": {
-          "type": "ActiveDirectory",
-          "identity": {
-            "objectId": "[reference(resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName')), '2019-05-01', 'Full').identity.principalId]",
-            "tenantId": "[subscription().tenantId]"
-          }
-        }
-      }
-    },
-    {
       "condition": "[not(empty(parameters('sentinelAutomationServicePrincipalObjectId')))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
@@ -1307,6 +1626,10 @@
       "type": "string",
       "value": "[resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName'))]"
     },
+    "notificationsLogicAppResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
+    },
     "actionsManagedIdentityPrincipalId": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName')), '2019-05-01', 'Full').identity.principalId]"
@@ -1318,6 +1641,10 @@
     "securityCopilotConnectionResourceId": {
       "type": "string",
       "value": "[resourceId('Microsoft.Web/connections', variables('securityCopilotConnectionName'))]"
+    },
+    "teamsConnectionResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]"
     },
     "automationRuleResourceId": {
       "type": "string",

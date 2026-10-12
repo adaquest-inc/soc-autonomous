@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "actionsLogicAppName": {
+      "value": "la-adaquest-l1-soc-triage-actions"
+    },
+    "notificationsLogicAppName": {
+      "value": "la-adaquest-l1-soc-triage-notifications"
+    },
+    "actionsLocation": {
+      "value": "eastus2"
+    },
+    "sentinelSubscriptionId": {
+      "value": "<CUSTOMER-SUBSCRIPTION-ID>"
+    },
+    "sentinelResourceGroupName": {
+      "value": "<SENTINEL-RESOURCE-GROUP>"
+    },
+    "sentinelWorkspaceName": {
+      "value": "<SENTINEL-WORKSPACE-NAME>"
+    },
+    "escalationAssigneeUPN": {
+      "value": "<CURRENT-ESCALATION-OWNER-UPN-OR-EMPTY>"
+    },
+    "closedIncidentsTeamId": {
+      "value": "<CLOSED-INCIDENTS-TEAM-ID>"
+    },
+    "closedIncidentsChannelId": {
+      "value": "<CLOSED-INCIDENTS-CHANNEL-ID>"
+    },
+    "escalatedIncidentsTeamId": {
+      "value": "<ESCALATED-INCIDENTS-TEAM-ID>"
+    },
+    "escalatedIncidentsChannelId": {
+      "value": "<ESCALATED-INCIDENTS-CHANNEL-ID>"
+    }
+  }
+}
