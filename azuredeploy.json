@@ -4,7 +4,7 @@
   "metadata": {
     "title": "adaQuest L1 SOC Triage - MVP deployment",
     "description": "Deploys the automatic launcher, Sentinel incident actions, and Microsoft Teams notification Logic Apps.",
-    "version": "0.4.1"
+    "version": "0.4.2"
   },
   "parameters": {
     "actionsLogicAppName": {
@@ -170,7 +170,7 @@
       "defaultValue": {
         "solution": "adaQuest L1 SOC Triage",
         "component": "Security Copilot Agent",
-        "deploymentVersion": "0.4.1"
+        "deploymentVersion": "0.4.2"
       }
     }
   },
@@ -292,9 +292,6 @@
               "type": "Object"
             },
             "EscalationAssigneeUPN": {
-              "type": "String"
-            },
-            "NotificationWorkflowResourceId": {
               "type": "String"
             },
             "SentinelSubscriptionId": {
@@ -553,7 +550,7 @@
                             "host": {
                               "triggerName": "ReceiveIncidentNotification",
                               "workflow": {
-                                "id": "@parameters('NotificationWorkflowResourceId')"
+                                "id": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
                               }
                             },
                             "body": {
@@ -691,7 +688,7 @@
                                       "host": {
                                         "triggerName": "ReceiveIncidentNotification",
                                         "workflow": {
-                                          "id": "@parameters('NotificationWorkflowResourceId')"
+                                          "id": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
                                         }
                                       },
                                       "body": {
@@ -1084,9 +1081,6 @@
           },
           "EscalationAssigneeUPN": {
             "value": "[parameters('escalationAssigneeUPN')]"
-          },
-          "NotificationWorkflowResourceId": {
-            "value": "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
           }
         }
       },
@@ -1514,178 +1508,6 @@
         "[resourceId('Microsoft.Web/connections', variables('launcherSentinelConnectionName'))]",
         "[resourceId('Microsoft.Web/connections', variables('securityCopilotConnectionName'))]"
       ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "deployLogicAppConnectionAccessPolicies",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/connections', variables('actionsMonitorConnectionName'))]",
-        "[resourceId('Microsoft.Web/connections', variables('actionsSentinelConnectionName'))]",
-        "[resourceId('Microsoft.Web/connections', variables('launcherSentinelConnectionName'))]",
-        "[resourceId('Microsoft.Web/connections', variables('securityCopilotConnectionName'))]",
-        "[resourceId('Microsoft.Web/connections', variables('teamsConnectionName'))]",
-        "[resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName'))]",
-        "[resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName'))]",
-        "[resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName'))]"
-      ],
-      "properties": {
-        "mode": "Incremental",
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "parameters": {
-          "actionsLocation": {
-            "value": "[parameters('actionsLocation')]"
-          },
-          "launcherLocation": {
-            "value": "[parameters('launcherLocation')]"
-          },
-          "tenantId": {
-            "value": "[subscription().tenantId]"
-          },
-          "actionsPrincipalId": {
-            "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('actionsLogicAppName')), '2019-05-01', 'Full').identity.principalId]"
-          },
-          "launcherPrincipalId": {
-            "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('launcherLogicAppName')), '2019-05-01', 'Full').identity.principalId]"
-          },
-          "notificationsPrincipalId": {
-            "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('notificationsLogicAppName')), '2019-05-01', 'Full').identity.principalId]"
-          },
-          "actionsMonitorConnectionName": {
-            "value": "[variables('actionsMonitorConnectionName')]"
-          },
-          "actionsSentinelConnectionName": {
-            "value": "[variables('actionsSentinelConnectionName')]"
-          },
-          "launcherSentinelConnectionName": {
-            "value": "[variables('launcherSentinelConnectionName')]"
-          },
-          "securityCopilotConnectionName": {
-            "value": "[variables('securityCopilotConnectionName')]"
-          },
-          "teamsConnectionName": {
-            "value": "[variables('teamsConnectionName')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "parameters": {
-            "actionsLocation": {
-              "type": "string"
-            },
-            "launcherLocation": {
-              "type": "string"
-            },
-            "tenantId": {
-              "type": "string"
-            },
-            "actionsPrincipalId": {
-              "type": "string"
-            },
-            "launcherPrincipalId": {
-              "type": "string"
-            },
-            "notificationsPrincipalId": {
-              "type": "string"
-            },
-            "actionsMonitorConnectionName": {
-              "type": "string"
-            },
-            "actionsSentinelConnectionName": {
-              "type": "string"
-            },
-            "launcherSentinelConnectionName": {
-              "type": "string"
-            },
-            "securityCopilotConnectionName": {
-              "type": "string"
-            },
-            "teamsConnectionName": {
-              "type": "string"
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Web/connections/accessPolicies",
-              "apiVersion": "2016-06-01",
-              "name": "[concat(parameters('actionsMonitorConnectionName'), '/', parameters('actionsPrincipalId'))]",
-              "location": "[parameters('actionsLocation')]",
-              "properties": {
-                "principal": {
-                  "type": "ActiveDirectory",
-                  "identity": {
-                    "objectId": "[parameters('actionsPrincipalId')]",
-                    "tenantId": "[parameters('tenantId')]"
-                  }
-                }
-              }
-            },
-            {
-              "type": "Microsoft.Web/connections/accessPolicies",
-              "apiVersion": "2016-06-01",
-              "name": "[concat(parameters('actionsSentinelConnectionName'), '/', parameters('actionsPrincipalId'))]",
-              "location": "[parameters('actionsLocation')]",
-              "properties": {
-                "principal": {
-                  "type": "ActiveDirectory",
-                  "identity": {
-                    "objectId": "[parameters('actionsPrincipalId')]",
-                    "tenantId": "[parameters('tenantId')]"
-                  }
-                }
-              }
-            },
-            {
-              "type": "Microsoft.Web/connections/accessPolicies",
-              "apiVersion": "2016-06-01",
-              "name": "[concat(parameters('launcherSentinelConnectionName'), '/', parameters('launcherPrincipalId'))]",
-              "location": "[parameters('launcherLocation')]",
-              "properties": {
-                "principal": {
-                  "type": "ActiveDirectory",
-                  "identity": {
-                    "objectId": "[parameters('launcherPrincipalId')]",
-                    "tenantId": "[parameters('tenantId')]"
-                  }
-                }
-              }
-            },
-            {
-              "type": "Microsoft.Web/connections/accessPolicies",
-              "apiVersion": "2016-06-01",
-              "name": "[concat(parameters('securityCopilotConnectionName'), '/', parameters('launcherPrincipalId'))]",
-              "location": "[parameters('launcherLocation')]",
-              "properties": {
-                "principal": {
-                  "type": "ActiveDirectory",
-                  "identity": {
-                    "objectId": "[parameters('launcherPrincipalId')]",
-                    "tenantId": "[parameters('tenantId')]"
-                  }
-                }
-              }
-            },
-            {
-              "type": "Microsoft.Web/connections/accessPolicies",
-              "apiVersion": "2016-06-01",
-              "name": "[concat(parameters('teamsConnectionName'), '/', parameters('notificationsPrincipalId'))]",
-              "location": "[parameters('actionsLocation')]",
-              "properties": {
-                "principal": {
-                  "type": "ActiveDirectory",
-                  "identity": {
-                    "objectId": "[parameters('notificationsPrincipalId')]",
-                    "tenantId": "[parameters('tenantId')]"
-                  }
-                }
-              }
-            }
-          ]
-        }
-      }
     },
     {
       "condition": "[not(empty(parameters('sentinelAutomationServicePrincipalObjectId')))]",
