@@ -31,6 +31,9 @@ It does **not** modify the existing Logic Apps used in the adaQuest development 
 
 - `azuredeploy.json`: combined ARM template.
 - `azuredeploy.parameters.example.json`: customer-specific parameter example.
+- `azuredeploy.teams-upgrade.json`: incremental Teams notification upgrade for an existing v0.3.1 deployment.
+- `azuredeploy.teams-upgrade.parameters.example.json`: incremental upgrade parameter example.
+- `TEAMS-UPGRADE.md`: safe upgrade and validation instructions.
 - `scripts/Deploy-L1SocTriage.ps1`: optional Azure CLI deployment helper in the GitHub repository.
 
 ## Before selecting Deploy to Azure
