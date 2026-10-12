@@ -34,6 +34,7 @@ It does **not** modify the existing Logic Apps used in the adaQuest development 
 - `azuredeploy.teams-upgrade.json`: incremental Teams notification upgrade for an existing v0.3.1 deployment.
 - `azuredeploy.teams-upgrade.parameters.example.json`: incremental upgrade parameter example.
 - `TEAMS-UPGRADE.md`: safe upgrade and validation instructions.
+- `scripts/Get-TeamsChannelIds.ps1`: extracts the Team ID and decoded Channel ID from a copied Teams channel link.
 - `scripts/Deploy-L1SocTriage.ps1`: optional Azure CLI deployment helper in the GitHub repository.
 
 ## Before selecting Deploy to Azure
